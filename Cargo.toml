@@ -1,0 +1,37 @@
+[package]
+name = "livekit_audio"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-web = "4.5.1"
+anyhow = "1.0.79"
+ezsockets = { version = "0.6.2", features = ["client"] }
+livekit = { git = "https://github.com/livekit/rust-sdks.git", rev = "4ca4129", features = [
+  "native-tls",
+] }
+livekit-api = { git = "https://github.com/livekit/rust-sdks.git", rev = "4ca4129" }
+livekit-protocol = { git = "https://github.com/livekit/rust-sdks.git", rev = "4ca4129" }
+log = "0.4.20"
+parking_lot = "0.12.1"
+pretty_env_logger = "0.5.0"
+serde = { version = "1.0.196", features = ["derive"] }
+tokio = { version = "1.36.0", features = ["full"] }
+
+[profile.dev]
+opt-level = 1 # Small amount of optimizations
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+opt-level = "z"   # Optimize for binanry size.
+lto = true        # Enable link-time optimization.
+codegen-units = 1 # Only use one codegen unit, to imcrease optimization.
+panic = "abort"   # Abort on panic, instead of unwinding the stack.
+
+[profile.prod]
+inherits = "release"
+strip = true         # Automatically strip symbols from the binary.
