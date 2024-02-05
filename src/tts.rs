@@ -1,4 +1,3 @@
-use anyhow::bail;
 use async_trait::async_trait;
 use base64::{
     engine::general_purpose::{self},
@@ -12,7 +11,7 @@ use ezsockets::{
 use futures::StreamExt;
 use livekit::webrtc::{audio_frame::AudioFrame, audio_source::native::NativeAudioSource};
 use log::{error, info};
-use parking_lot::Mutex;
+
 use serde::Serialize;
 use serde_json::Value;
 use std::{
@@ -101,7 +100,7 @@ impl ezsockets::ClientExt for WSClient {
             let sample_rate = self.audio_src.sample_rate();
             let samples_per_channel = 1_u32;
 
-            let num_samples = (sample_rate / 1000 * ms) as usize;
+            let _num_samples = (sample_rate / 1000 * ms) as usize;
 
             let audio_frame = AudioFrame { data, num_channels, sample_rate, samples_per_channel };
 

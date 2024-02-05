@@ -2,14 +2,14 @@ use std::{sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use ezsockets::{
-    client::ClientCloseMode, Client, ClientConfig, CloseFrame, MessageStatus, RawMessage,
-    SocketConfig, WSError,
+    client::ClientCloseMode, ClientConfig, CloseFrame, RawMessage, SocketConfig, WSError,
 };
 use log::{error, info};
 use serde_json::{json, Value};
-use tokio::sync::{self, mpsc::{self, UnboundedReceiver}};
-
-
+use tokio::sync::{
+    self,
+    mpsc::{self},
+};
 
 pub struct STT {
     pub stt_tx: mpsc::UnboundedSender<Vec<u8>>,
@@ -46,6 +46,7 @@ impl ezsockets::ClientExt for WSClient {
         let () = call;
         Ok(())
     }
+
     async fn on_connect(&mut self) -> Result<(), ezsockets::Error> {
         info!("Deepgram CONNECTED");
         Ok(())
@@ -105,8 +106,8 @@ impl STT {
         let (stt_tx, mut rx) = sync::mpsc::unbounded_channel::<Vec<u8>>();
 
         tokio::spawn(async move {
-            while let Some(audio_bytes) =  rx.recv().await {
-                match ws_client.binary(audio_bytes){
+            while let Some(audio_bytes) = rx.recv().await {
+                match ws_client.binary(audio_bytes) {
                     Ok(signal) => {
                         signal.status();
                         // log??
@@ -115,10 +116,7 @@ impl STT {
                 };
             }
         });
-        
-        Ok(Self {stt_tx})
+
+        Ok(Self { stt_tx })
     }
 }
-
-
-

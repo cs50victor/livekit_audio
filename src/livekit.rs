@@ -5,7 +5,10 @@ use livekit::{
     options::TrackPublishOptions,
     publication::LocalTrackPublication,
     track::{LocalAudioTrack, LocalTrack, RemoteTrack, TrackSource},
-    webrtc::{audio_source::{native::NativeAudioSource, AudioSourceOptions, RtcAudioSource}, audio_stream::native::NativeAudioStream},
+    webrtc::{
+        audio_source::{native::NativeAudioSource, AudioSourceOptions, RtcAudioSource},
+        audio_stream::native::NativeAudioStream,
+    },
     DataPacketKind, Room, RoomError, RoomEvent,
 };
 use livekit_api::access_token::{AccessToken, VideoGrants};
@@ -15,7 +18,10 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 use crate::{
-    llm::{run_llm, LLM}, stt::STT, tts::TTS, BOT_NAME, LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_WS_URL,
+    llm::{run_llm, LLM},
+    stt::STT,
+    tts::TTS,
+    BOT_NAME, LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_WS_URL,
 };
 
 pub const CHAT_PREFIX: &str = "[chat]";
@@ -115,25 +121,29 @@ pub async fn handle_room_events(
 ) {
     while let Some(event) = room_events.recv().await {
         match event {
-            RoomEvent::TrackSubscribed { track, publication:_, participant:_ } => {
-                if let RemoteTrack::Audio(audio_track) = track{
+            RoomEvent::TrackSubscribed { track, publication: _, participant: _ } => {
+                if let RemoteTrack::Audio(audio_track) = track {
                     let audio_rtc_track = audio_track.rtc_track();
-                        let mut audio_stream = NativeAudioStream::new(audio_rtc_track);
-                        // let audio_should_stop = audio_syncer.should_stop.clone();
-                        let stt_tx = stt_tx.clone();
-                        tokio::spawn(async move {
-                            while let Some(frame) = audio_stream.next().await {
-                                // if audio_should_stop.load(Ordering::Relaxed) {
-                                //     continue;
-                                // }
-                                
-                                let audio_buffer = frame.data.into_iter().map(|sample| sample.to_sample::<u8>()).collect::<Vec<u8>>();
+                    let mut audio_stream = NativeAudioStream::new(audio_rtc_track);
+                    // let audio_should_stop = audio_syncer.should_stop.clone();
+                    let stt_tx = stt_tx.clone();
+                    tokio::spawn(async move {
+                        while let Some(frame) = audio_stream.next().await {
+                            // if audio_should_stop.load(Ordering::Relaxed) {
+                            //     continue;
+                            // }
 
-                                if let Err(e) = stt_tx.send(audio_buffer) {
-                                    error!("Couldn't send audio frame to stt {e}");
-                                };
-                            }
-                        });
+                            let audio_buffer = frame
+                                .data
+                                .iter()
+                                .map(|sample| sample.to_sample::<u8>())
+                                .collect::<Vec<u8>>();
+
+                            if let Err(e) = stt_tx.send(audio_buffer) {
+                                error!("Couldn't send audio frame to stt {e}");
+                            };
+                        }
+                    });
                 }
             },
             // RoomEvent::TrackUnsubscribed { track, publication, participant } => todo!(),
@@ -146,7 +156,7 @@ pub async fn handle_room_events(
             // RoomEvent::TrackUnpublished { publication, participant } => todo!(),
             // RoomEvent::TrackMuted { participant, publication } => todo!(),
             // RoomEvent::TrackUnmuted { participant, publication } => todo!(),
-            RoomEvent::DataReceived { payload, topic: _, kind, participant : _} => {
+            RoomEvent::DataReceived { payload, topic: _, kind, participant: _ } => {
                 if kind == DataPacketKind::Reliable {
                     if let Some(payload) = payload.as_ascii() {
                         let room_text: serde_json::Result<RoomText> =
@@ -173,14 +183,14 @@ pub async fn handle_room_events(
 }
 
 pub async fn join_room_with_ai(room_name: String) -> Result<()> {
-    let RoomData { audio_src, audio_pub: _, room:_, room_events } =
+    let RoomData { audio_src, audio_pub: _, room: _, room_events } =
         connect_to_livekit_room(room_name).await?;
 
-    let LLM {tx:llm_tx, rx:llm_rx, client} = LLM::new();
+    let LLM { tx: llm_tx, rx: llm_rx, client } = LLM::new();
     let tts = TTS::new(audio_src).await?;
-    let STT{stt_tx} = STT::new(llm_tx.clone()).await?;
+    let STT { stt_tx } = STT::new(llm_tx.clone()).await?;
 
-    tokio::spawn(run_llm(llm_rx,client,tts));
-    tokio::spawn(handle_room_events(room_events,llm_tx,stt_tx));
+    tokio::spawn(run_llm(llm_rx, client, tts));
+    tokio::spawn(handle_room_events(room_events, llm_tx, stt_tx));
     Ok(())
 }

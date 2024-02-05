@@ -1,16 +1,19 @@
 #![feature(ascii_char, async_closure, slice_pattern)]
 mod livekit;
+mod llm;
 mod stt;
 mod tts;
-mod llm;
 
-use std::{error::Error, sync::{atomic::{AtomicBool, Ordering}, Arc}};
 use actix_web::{http::Method, HttpRequest, HttpResponse as Resp, Responder};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
+use actix_web::web::{self};
 use livekit_api::{access_token, webhooks};
-use serde::{Deserialize, Serialize};
-use actix_web::web::{self, Data};
 use log::{error, info};
+use serde::{Deserialize, Serialize};
 
 use crate::livekit::join_room_with_ai;
 
@@ -21,8 +24,6 @@ pub const OPENAI_ORG_ID: &str = "OPENAI_ORG_ID";
 pub const DEEPGRAM_API_KEY: &str = "DEEPGRAM_API_KEY";
 pub const ELEVENLABS_API_KEY: &str = "ELEVENLABS_API_KEY";
 pub const BOT_NAME: &str = "SeeRee";
-
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServerMsg<T> {
@@ -53,8 +54,7 @@ pub async fn livekit_webhook_handler(
     body: web::Bytes,
 ) -> impl Responder {
     if req.method().ne(&Method::POST) {
-        return Resp::MethodNotAllowed()
-            .json(ServerMsg::error("Method not allowed"));
+        return Resp::MethodNotAllowed().json(ServerMsg::error("Method not allowed"));
     }
 
     log::info!("SERVER RECEIVED WEBHOOK");
@@ -106,9 +106,11 @@ pub async fn livekit_webhook_handler(
 
                 // log::info!("app state {:?}", *server_data.app_state);
 
-                let x = match join_room_with_ai(participant_room_name).await{
+                match join_room_with_ai(participant_room_name).await {
                     Ok(res) => res,
-                    Err(e) => return Resp::InternalServerError().json(ServerMsg::error(e.to_string())),
+                    Err(e) => {
+                        return Resp::InternalServerError().json(ServerMsg::error(e.to_string()))
+                    },
                 };
                 is_active.store(true, Ordering::Relaxed);
                 info!("\nSERVER FINISHED PROCESSING ROOM_STARTED WEBHOOK");
@@ -133,11 +135,10 @@ pub async fn livekit_webhook_handler(
     Resp::Ok().json(ServerMsg::data("Livekit Webhook Successfully Processed"))
 }
 
-
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     dotenvy::from_filename_override(".env.local").ok();
-    
+
     std::env::var(LIVEKIT_API_SECRET).expect("LIVEKIT_API_SECRET must be set");
     std::env::var(LIVEKIT_API_KEY).expect("LIVEKIT_API_KEY must be set");
     std::env::var(LIVEKIT_WS_URL).expect("LIVEKIT_WS_URL is not set");
@@ -157,7 +158,7 @@ async fn main() -> std::io::Result<()> {
         .init();
 
     info!("starting HTTP server on port {port}");
-    
+
     // let server_resources =
     //     Data::new(parking_lot::Mutex::new(ServerResources { app_state }));
 

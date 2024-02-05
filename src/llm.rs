@@ -1,9 +1,19 @@
 use std::time::Duration;
 
-use async_openai::{config::OpenAIConfig, types::{ChatCompletionRequestUserMessageArgs, ChatCompletionRequestUserMessageContent, CreateChatCompletionRequestArgs}, Client};
+use async_openai::{
+    config::OpenAIConfig,
+    types::{
+        ChatCompletionRequestUserMessageArgs, ChatCompletionRequestUserMessageContent,
+        CreateChatCompletionRequestArgs,
+    },
+    Client,
+};
 use futures::StreamExt as _;
 use log::{error, warn};
-use tokio::{sync::{self, mpsc}, time::Instant};
+use tokio::{
+    sync::{self, mpsc},
+    time::Instant,
+};
 
 use crate::{tts::TTS, OPENAI_ORG_ID};
 
@@ -32,9 +42,7 @@ pub async fn run_llm(
     openai_client: Client<OpenAIConfig>,
     mut tts_client: TTS,
 ) -> anyhow::Result<()> {
-    let splitters = [
-        '.', ',', '?', '!', ';', ':', '—', '-', '(', ')', '[', ']', '}', ' ',
-    ];
+    let splitters = ['.', ',', '?', '!', ';', ':', '—', '-', '(', ')', '[', ']', '}', ' '];
     let mut txt_buffer = String::new();
     let mut tts_buffer = String::new();
     let mut last_text_send_time = Instant::now();
@@ -53,9 +61,7 @@ pub async fn run_llm(
             warn!("GPT ABOUT TO RECEIVE - {txt_buffer}");
             let request = openai_req
                 .messages([ChatCompletionRequestUserMessageArgs::default()
-                    .content(ChatCompletionRequestUserMessageContent::Text(
-                        txt_buffer.clone(),
-                    ))
+                    .content(ChatCompletionRequestUserMessageContent::Text(txt_buffer.clone()))
                     .build()?
                     .into()])
                 .build()?;
@@ -76,10 +82,10 @@ pub async fn run_llm(
                                 }
                             };
                         }
-                    }
+                    },
                     Err(err) => {
                         warn!("chunk error: {err:#?}");
-                    }
+                    },
                 }
             }
             txt_buffer.clear();
