@@ -1,10 +1,27 @@
+#![feature(ascii_char, async_closure, slice_pattern)]
+mod livekit;
+mod stt;
+mod tts;
+mod llm;
+
 use std::{error::Error, sync::{atomic::{AtomicBool, Ordering}, Arc}};
 use actix_web::{http::Method, HttpRequest, HttpResponse as Resp, Responder};
 
 use livekit_api::{access_token, webhooks};
 use serde::{Deserialize, Serialize};
 use actix_web::web::{self, Data};
-use log::info;
+use log::{error, info};
+
+use crate::livekit::join_room_with_ai;
+
+pub const LIVEKIT_API_SECRET: &str = "LIVEKIT_API_SECRET";
+pub const LIVEKIT_API_KEY: &str = "LIVEKIT_API_KEY";
+pub const LIVEKIT_WS_URL: &str = "LIVEKIT_WS_URL";
+pub const OPENAI_ORG_ID: &str = "OPENAI_ORG_ID";
+pub const DEEPGRAM_API_KEY: &str = "DEEPGRAM_API_KEY";
+pub const ELEVENLABS_API_KEY: &str = "ELEVENLABS_API_KEY";
+pub const BOT_NAME: &str = "SeeRee";
+
 
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -78,7 +95,7 @@ pub async fn livekit_webhook_handler(
         let event = event.event;
         if event == "room_started" {
             if num_participants < max_participants {
-                info!("... establishing connection to room");
+                info!("... establishing a connection to user's room");
 
                 // let server_data = server_data.lock();
 
@@ -89,6 +106,10 @@ pub async fn livekit_webhook_handler(
 
                 // log::info!("app state {:?}", *server_data.app_state);
 
+                let x = match join_room_with_ai(participant_room_name).await{
+                    Ok(res) => res,
+                    Err(e) => return Resp::InternalServerError().json(ServerMsg::error(e.to_string())),
+                };
                 is_active.store(true, Ordering::Relaxed);
                 info!("\nSERVER FINISHED PROCESSING ROOM_STARTED WEBHOOK");
             };
@@ -103,7 +124,7 @@ pub async fn livekit_webhook_handler(
             // log::info!("app state {:?}", *server_data.app_state);
 
             is_active.store(false, Ordering::Relaxed);
-            info!("\nSERVER FINISHED PROCESSING ROOM_FINISHED WEBHOOK");
+            error!("\nSERVER FINISHED PROCESSING ROOM_FINISHED WEBHOOK");
         }
     } else {
         info!("received event {}", event.event);
@@ -115,11 +136,19 @@ pub async fn livekit_webhook_handler(
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+    dotenvy::from_filename_override(".env.local").ok();
+    
+    std::env::var(LIVEKIT_API_SECRET).expect("LIVEKIT_API_SECRET must be set");
+    std::env::var(LIVEKIT_API_KEY).expect("LIVEKIT_API_KEY must be set");
+    std::env::var(LIVEKIT_WS_URL).expect("LIVEKIT_WS_URL is not set");
+    std::env::var(OPENAI_ORG_ID).expect("OPENAI_ORG_ID must be set");
+    std::env::var(DEEPGRAM_API_KEY).expect("DEEPGRAM_API_KEY must be set");
+    std::env::var(ELEVENLABS_API_KEY).expect("ELEVENLABS_API_KEY must be set");
+
     let port = std::env::var("PORT")
         .unwrap_or_else(|_| "6669".to_string())
         .parse::<u16>()
         .expect("PORT couldn't be set");
-
 
     pretty_env_logger::formatted_builder()
         .filter_module("livekit_audio", log::LevelFilter::Info)

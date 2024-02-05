@@ -8,7 +8,12 @@ edition = "2021"
 [dependencies]
 actix-web = "4.5.1"
 anyhow = "1.0.79"
+async-openai = "0.18.2"
+async-trait = "0.1.77"
+base64 = "0.21.7"
+dotenvy = "0.15.7"
 ezsockets = { version = "0.6.2", features = ["client"] }
+futures = "0.3.30"
 livekit = { git = "https://github.com/livekit/rust-sdks.git", rev = "4ca4129", features = [
   "native-tls",
 ] }
@@ -17,8 +22,11 @@ livekit-protocol = { git = "https://github.com/livekit/rust-sdks.git", rev = "4c
 log = "0.4.20"
 parking_lot = "0.12.1"
 pretty_env_logger = "0.5.0"
+rodio = { version = "0.17.3", features = ["wav"], default-features = false }
 serde = { version = "1.0.196", features = ["derive"] }
+serde_json = "1.0.113"
 tokio = { version = "1.36.0", features = ["full"] }
+url = { version = "2.5.0", default-features = false }
 
 [profile.dev]
 opt-level = 1 # Small amount of optimizations
